@@ -2,7 +2,7 @@ import logging
 import time
 
 
-from scrapper import Scrapper
+from scrapper import ResultatScrapper, Scrapper
 
 if __name__=="__main__":
 
@@ -16,7 +16,9 @@ if __name__=="__main__":
     # days=s.start("01012019",end="31122019")
     # logging.info(f"Scrapping from {days[0]} to {days[1]} by step {days[2]} ")
 
-    s=Scrapper(use_proxy=True,USE_THREADING=True,to_check_results=True)
-    s.start(predict_filename="predicted")
+    # s=Scrapper(use_proxy=True,USE_THREADING=True,to_check_results=True)
+    # s.start(predict_filename="predicted")
 
+    resultat=ResultatScrapper(use_proxy=True,use_threading=True)
+    resultat.start("24072021")
     logging.info(f"it's took {(time.time() - start_time)} seconds\nBye...")

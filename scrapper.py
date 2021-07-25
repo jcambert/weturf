@@ -1,4 +1,5 @@
 import json
+from pandas.core.base import IndexOpsMixin
 from pandas.core.frame import DataFrame
 import requests
 import pandas as pd
@@ -169,8 +170,6 @@ class Scrapper():
     def __scrap(self,day,save_mode='a'):
         day=get_pmu_date(day)
         logging.info(f"Start scraping {day}")
-        courses=[]
-        courses_reunions=[]
         participants={'TROT_MONTE':[],'TROT_ATTELE':[],'PLAT':[],'OBSTACLE':[]}
         df_reunions=self.__get_reunions(day)
         if isinstance(df_reunions,bool) and not df_reunions:
@@ -194,7 +193,6 @@ class Scrapper():
                 else:
 
                     subdf_ptcp=self.__scrap_participants(day,course,sub)
-                # subdf_ptcp=subdf_ptcp.drop(['eleveur','nomPere','nomMere','nomPereMere','gainsParticipant','dernierRapportDirect','dernierRapportReference','urlCasaque','commentaireApresCourse','distanceChevalPrecedent','robe'],axis=1,errors='ignore')
                     if subdf_ptcp:
                         participants[specialite].append(subdf_ptcp)
                     logging.info(f"END REUNION {course['numReunion']}/{course['numExterne']}")
@@ -203,8 +201,7 @@ class Scrapper():
                 logging.debug("Main    : before joining thread %d.", index)
                 thread.join()
                 logging.debug("Main    : thread %d done", index)
-        # df_courses=pd.concat(courses)
-        # save(df_courses,courses_filename,'w')
+
         for spec in participants:
             if len(participants[spec])>0:
                 df_participants=pd.concat(participants[spec])
@@ -308,9 +305,148 @@ class Scrapper():
                 break
         return (exist,current)
 
-class ResultatScrapper(Scrapper):
-    pass
-class ToPredictScrapper(Scrapper):
-    pass
-class HistoryScrapper(Scrapper):
-    pass
+
+class AbstractScrapper():
+    def __init__(self,**kwargs):
+        self._use_proxy= kwargs['use_proxy'] if 'use_proxy' in kwargs else True
+        self._use_threading= kwargs['use_threading'] if 'use_threading' in kwargs else True
+    def _origins(self):
+        url = 'http://httpbin.org/ip'
+        o_p=json.loads(self._request(url,use_proxy=True).text)['origin']
+        o_o=json.loads(self._request(url,use_proxy=False).text)['origin']
+        return ( o_p,o_o)
+    
+    def _request(self,url,**kwargs):
+        __use_proxy= kwargs['use_proxy'] if 'use_proxy' in kwargs else self._use_proxy
+        return  (requests.get(url, proxies=PROXIES) if __use_proxy else  requests.get(url) )
+    
+    def _save(self,df,filename,mode='a'):
+        writeHeader=not path.exists(filename) or mode=='w'
+        df.to_csv(filename,sep=";",na_rep='',mode=mode,index=False,header=writeHeader)
+    
+    def _check(self):
+        if self._use_proxy:
+            o=self._origins()
+            if o[0]==o[1]:
+                raise AssertionError(f"When using proxy {o[0]} must be different than {o[1]} \ensure you are set proxy to Internet Options")
+    def _scrap(self,day):
+        raise NotImplementedError(f"You cant run {__name__}")
+    def start(self,start=None,**kwargs):
+        self._check()
+        if not start:
+            start=get_yesterday()
+        start=get_pmu_date(start)
+        current=get_date_from_pmu( start)
+        step=int(kwargs['step']) if 'step' in kwargs else 1
+        if 'count' in kwargs:
+            count = int(kwargs['count'])
+        else:
+            if start==get_pmu_date(get_yesterday()):
+                kwargs['count']=0
+        end=get_date_from_pmu( kwargs['end']) if 'end' in kwargs  else ( current+timedelta( int(kwargs['count'])+1) if 'count' in kwargs else get_date_from_pmu(yesterday))
+        sleep=int(kwargs['sleep']) if 'sleep' in kwargs else 500
+
+        while current<end:
+            try:
+                self._scrap(get_pmu_date(current ))
+                time.sleep(sleep/1000)
+                current=current+ timedelta(step)
+            except Exception  as ex:
+                logging.warn(ex,exc_info=True)
+                logging.warn(f"an error happened while scrap {current}. go to next day")
+                current=current+ timedelta(step)
+        return (start,current,step)
+
+    def _get_reunions(self,date,as_json=False):
+        logging.info(f"Get Reunion:{prg_url%date}")
+        
+        try:
+            resp=self._request(prg_url % date)
+            if resp.status_code!=200:
+                return False
+            if as_json:
+                return resp.json()
+            df=pd.DataFrame(resp.json())
+            return df
+        except Exception as ex:
+            logging.warning(ex)
+            return False
+
+    def _get_resultats(self,date,reunion,course,**kwargs):
+        logging.info(f"Get Resultat {resultat_url % (date,reunion,course)}")
+        resp=self._request(resultat_url % (date,reunion,course)).json()
+        as_json=kwargs['as_json'] if 'as_json' in kwargs else False
+        if  as_json:
+            return resp
+        df=pd.DataFrame(resp)
+        
+        return df
+class ResultatScrapper(AbstractScrapper):
+    def __init__(self,**kwargs):
+        super().__init__(**kwargs)
+        self.__filename="resultats_%s.csv"
+    def _scrap(self,day,save_mode='a'):
+        df_reunions=self._get_reunions(day,as_json=True)
+        if isinstance(df_reunions,bool) and not df_reunions:
+            return
+        list_reunions= df_reunions['programme']['reunions']
+        programmes=[]
+        resultats={'TROT_MONTE':[],'TROT_ATTELE':[],'PLAT':[],'OBSTACLE':[]}
+        for reunion in list_reunions:
+            threads = list()
+            for course in reunion['courses']:
+                num_reunion=int(reunion['numExterne'])
+                num_course=int(course['numExterne'])
+                specialite=course['specialite']
+
+                if self._use_threading:
+                    logging.info(f"Start reading resultat R{num_reunion}/C{num_course}")
+                    
+                    x = threading.Thread(target=self.__scrap_resulats, args=(day,num_reunion,num_course,resultats[specialite]))
+                    threads.append(x)
+                    x.start()
+                else:
+
+                    scrap_resultats=self.__scrap_resulats(day,num_reunion,num_course)
+                    if isinstance( scrap_resultats,DataFrame):
+                        resultats[specialite].append(scrap_resultats)
+                    logging.info(f"End reading  resultat R{num_reunion}/C{num_course}")
+            for index, thread in enumerate(threads):
+                thread.join()
+        for spec in resultats:
+            if len(resultats[spec])>0:
+                df_resultats=pd.concat(resultats[spec])
+                self._save(df_resultats,self.__filename % spec.lower(),save_mode)
+ 
+    def __scrap_resulats(self,day,reunion,course,result=False):
+        lines=[]
+        try:
+            resultats=self._get_resultats(day,reunion,course,as_json=True)
+            for resultat in resultats:
+                mise_base=int(resultat['miseBase'])
+                libelle=resultat['typePari']
+                for rapport in resultat['rapports']:
+                    dividende=rapport['dividendePourUneMiseDeBase']
+                    for combinaison in rapport['combinaison']:
+                        try:
+                            numPmu=int(combinaison)
+                            line=(get_date_from_pmu(day) ,reunion,course,libelle,numPmu,dividende/mise_base)
+                            lines.append(line)
+                        except ValueError:
+                            pass
+                
+            if isinstance(result,list):
+                df_lines=pd.DataFrame(lines,columns=['date','reunion','course','pari','numPmu','rapport'])
+                result.append( df_lines)
+            else:
+                return pd.DataFrame(lines,columns=['date','reunion','course','pari','numPmu','rapport'])
+        except Exception as ex:
+            logging.error(ex)
+            return False
+class ToPredictScrapper(AbstractScrapper):
+    def __init__(self,**kwargs):
+        super().__init__(**kwargs)
+    
+class HistoryScrapper(AbstractScrapper):
+    def __init__(self,**kwargs):
+        super().__init__(**kwargs)
