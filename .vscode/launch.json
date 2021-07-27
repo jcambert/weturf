@@ -5,6 +5,16 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Scrap/Predict",
+            "type": "python",
+            "request": "launch",
+            "program": "__init__.py",
+            "args": [
+                "all"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
             "name": "Python : Fichier actuel",
             "type": "python",
             "request": "launch",
@@ -12,10 +22,39 @@
             "console": "integratedTerminal"
         },
         {
+            "name": "Predicter",
+            "type": "python",
+            "request": "launch",
+            "program": "__init__.py",
+            "args": [
+                "predicter"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
             "name": "Scrapper",
             "type": "python",
             "request": "launch",
             "program": "__init__.py",
+            "args": [
+                "scrapper"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "History",
+            "type": "python",
+            "request": "launch",
+            "program": "__init__.py",
+            "args": ["history","26072021","31072021"],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Learning curve",
+            "type": "python",
+            "request": "launch",
+            "program": "__init__.py",
+            "args": ["l_curve"],
             "console": "integratedTerminal"
         }
     ]

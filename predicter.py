@@ -1,9 +1,12 @@
 from operator import indexOf
+from os import path
+import threading
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import re
 import logging
+from pandas.core.frame import DataFrame
 from sklearn.base import TransformerMixin
 from sklearn.linear_model import SGDClassifier
 from sklearn.neighbors import KNeighborsClassifier
@@ -81,7 +84,8 @@ def load_file(filename,is_predict=False):
     #     print(c)
     # print(df.head())
     if not is_predict:
-        df['ordreArrivee'] = df['ordreArrivee'].fillna(0)
+        # df['ordreArrivee'] = df['ordreArrivee'].fillna(0)
+        df['ordreArrivee'].fillna(0,inplace=True)
         places=df.apply (lambda row: place_converter(row), axis=1)
         # df['musique']=df.apply(lambda row:calculate_music(row),axis=1)  
         # df=df[NUMERICAL_FEATURES+CATEGORICAL_FEATURES+CALCULATED_FEATURES]
@@ -165,7 +169,7 @@ if __name__=='__main__':
     print_confusion_matrix=True
     print_training_score=True
     print_result=False
-    training_files={'trot attele':'participants_trot_attele','plat':'participants_plat','trot monte':'participants_trot_monte','obstacle':'participants_obstacle'}
+    training_files={'trot attele':'trot_attele','plat':'plat','trot monte':'trot_monte','obstacle':'obstacle'}
     # training_files=['participants_trot_attele']  
 
     output={'date':[],'reunion':[],'course':[],'nom':[],'rapport':[],'numPmu':[],'state':[]}    
@@ -174,8 +178,8 @@ if __name__=='__main__':
     for key,file in training_files.items():
         try:
             logging.info(f"Start prediction for {key}")
-            features,targets=load_file(f"{file}.csv")
-            to_predict,courses,chevaux=load_file(f"to_predict_{file}.csv",is_predict=True)
+            features,targets=load_file(f"participants_{file}.csv")
+            to_predict,courses,chevaux=load_file(f"topredict_{file}.csv",is_predict=True)
             model,features_train, features_test, targets_train, targets_test =train(features,targets,shuffle=True)
             if print_confusion_matrix:
                 logging.info("/"*100)
@@ -240,3 +244,153 @@ if __name__=='__main__':
         output_df.to_csv(f"predicted.csv",header=True,sep=";",mode='w')
         output_df.to_html(f"predicted.html")
         # pd.DataFrame.from_dict(output).to_csv(f"predicted.csv",header=True,sep=";",mode='a')
+
+class Predicter():
+    def __init__(self,use_threading=True,test=False,**kwargs) -> None:
+        self._use_threading,self._test=use_threading,test
+        self._fname= kwargs['fname'] if 'fname' in kwargs else None
+        self._print_confusion_matrix=kwargs['print_confusion_matrix'] if 'print_confusion_matrix' in kwargs else False
+        self._print_training_score=kwargs['print_training_score'] if 'print_training_score' in kwargs else False
+        self._print_result=kwargs['print_result'] if 'print_result' in kwargs else False
+        self._filename="predicted.csv"
+    def _load_file(self,filename,is_predict=False):
+        df=pd.read_csv(filename,sep=";",header=0,usecols=HEADER_COLUMNS+NUMERICAL_FEATURES+CATEGORICAL_FEATURES+CALCULATED_FEATURES+['ordreArrivee'],dtype={'numPmu':np.number},low_memory=False,converters={'musique':calculate_music,'sexe':sexe_converter})
+
+        if not is_predict:
+            df['ordreArrivee'].fillna(0,inplace=True)
+            places=df.apply (lambda row: place_converter(row), axis=1)
+            targets = places
+            features = df[NUMERICAL_FEATURES+CATEGORICAL_FEATURES+CALCULATED_FEATURES]
+            return features,targets
+        else:
+            courses=df[['reunion','course']].drop_duplicates()
+            participants=df[['date','nom','numPmu']]
+            return df[HEADER_COLUMNS+NUMERICAL_FEATURES+CATEGORICAL_FEATURES+CALCULATED_FEATURES],courses,participants
+
+    def get_save_mode(self):
+        return 'a'
+
+    def get_filename(self):
+        return self._fname if isinstance(self._fname,str) else self._filename
+
+    def leaning_curve(self,model,features,targets,train_sizes=None,cv=5):
+        if not train_sizes:
+            train_sizes=np.linspace(0.1,1.0,10)
+        N,train_score,val_score=learning_curve(model,features,targets,train_sizes=train_sizes,cv=cv)
+        return N,train_score,val_score
+
+    def gridSearchCV(self,model,param_grid=None,cv=None):
+        param_grid=param_grid or{'sgdclassifier__loss':['hinge', 'log', 'modified_huber', 'squared_hinge', 'perceptron', 'squared_loss', 'huber', 'epsilon_insensitive','squared_epsilon_insensitive'],
+                'sgdclassifier__max_iter':np.arange(10,1000,2),
+                'sgdclassifier__shuffle':[True,False],
+                'sgdclassifier__n_jobs':[1,2,3,4],
+                'sgdclassifier__learning_rate':['constant','optimal','invscaling','adaptive'],
+                'sgdclassifier__eta0':[0.05],
+                'sgdclassifier__max_iter':[5000]}
+        cv=cv or StratifiedKFold(4)
+        grid=GridSearchCV(model,param_grid,cv=cv)
+        grid.fit(features_train,targets_train)
+        model_=grid.best_estimator_
+        return model_
+
+    def _get_confusion_matrix(self,model,features_test,targets_test):
+        return confusion_matrix(targets_test,model.predict(features_test))
+
+    def _get_score(self,model,features_test,targets_test):
+        return model.score(features_test, targets_test)
+
+    def _train(self,features,targets,test_size=0.3,random_state=5,shuffle=False,classifier=None,name=None):
+        logging.info(f"Starting training {name}")
+        classifier=classifier or SGDClassifier(random_state=random_state,loss='squared_hinge',shuffle=True,learning_rate='optimal')
+        features_train, features_test, targets_train, targets_test = train_test_split(features, targets, test_size=test_size, random_state=random_state,shuffle=shuffle)
+        numerical_pipeline=make_pipeline(SimpleImputer(fill_value=0), RobustScaler())
+        categorical_pipeline=(make_pipeline(OneHotEncoder(handle_unknown = 'ignore')))
+        preprocessor=make_column_transformer(
+            (numerical_pipeline,NUMERICAL_FEATURES),
+            (categorical_pipeline,CATEGORICAL_FEATURES))
+        model_=make_pipeline(preprocessor,PolynomialFeatures(),VarianceThreshold(0.1),classifier)
+        model_.fit(features_train,targets_train)
+        logging.info(f"{name} is trained")
+        return model_,features_train, features_test, targets_train, targets_test
+
+    def _predict(self,key,file,learning_curve=False, result=False):
+        logging.info(f"Start prediction for {key}")
+        try:   
+            output_columns=['date','reunion','course','specialite','nom','rapport','numPmu','state','resultat_place','resultat_rapport','gain_brut','gain_net']
+            output_df=pd.DataFrame(columns=output_columns)
+
+            features,targets=self._load_file(f"participants_{file}.csv")
+            to_predict,courses,chevaux=self._load_file(f"topredict_{file}.csv",is_predict=True)
+            model,features_train, features_test, targets_train, targets_test =self._train(features,targets,shuffle=True,name=key)
+
+            if learning_curve:
+                output_df= self.leaning_curve(model,features= features_train,targets=targets_train,)
+                
+            else:
+                for course in courses.iterrows():
+                    x = np.asarray(course[1]).reshape(1,len(course[1]))
+                    r,c=x[0,0],x[0,1]
+                    participants_=to_predict[(to_predict['reunion']==r) & (to_predict['course']==c)]
+                    logging.info(f"Try to predict some Number from Reunion {r} Course {c}")
+                    participants=participants_[NUMERICAL_FEATURES+  CATEGORICAL_FEATURES+CALCULATED_FEATURES]
+                    res=participants.assign(place=model.predict(participants),
+                                        reunion=r,
+                                        course=c,
+                                        state='place',
+                                        nom=participants_['nom'],
+                                        date=participants_['date'],
+                                        specialite=key,
+                                        resultat_place=0,
+                                        resultat_rapport=0,
+                                        gain_brut=0,
+                                        gain_net=0)
+                    res=res.loc[res['place']==1][output_columns]
+                    if self._print_result:
+                        nb_res=res.shape[0]
+                        for z in range(nb_res):
+                            t=res.iloc[z]
+                            logging.info(f"R{r}/C{c} -> {t.nom}[{t.rapport}] {t.numPmu} placé" )
+                    output_df=output_df.append(res.copy())
+
+            if isinstance(result,list):
+                result.append(output_df)
+                logging.info(f"Prediction of  {key} finished")
+            else:
+                return output_df
+                # self._save(output_df,"predicted.csv",self.get_save_mode())
+        except FileNotFoundError as ex:
+            logging.warning(ex)
+    
+    def _save(self,df,filename,mode='a'):
+        logging.info(f"Saving to {filename}")
+        if not self._test:
+            writeHeader=not path.exists(filename) or mode=='w'
+            df.to_csv(filename,sep=";",na_rep='',mode=mode,index=False,header=writeHeader)
+        else:
+            logging.info("Mode Test=> No saving file action")
+        logging.info(f"{filename} saved")
+
+    def start(self,training_files=None,learning_curve=False):
+        if not training_files==None and not isinstance(training_files,dict):
+            raise TypeError("training_files must be a dict")
+        training_files=training_files or {'trot attele':'trot_attele','plat':'plat','trot monte':'trot_monte','obstacle':'obstacle'}
+        # training_files=training_files or {'trot attele':'trot_attele'}
+        participants={f"{key}":[] for key in training_files.keys() }
+        threads = list()
+        for key,file in training_files.items():
+            
+            if self._use_threading:
+                x = threading.Thread(target=self._predict, args=(key,file,learning_curve, participants[key]))
+                threads.append(x)
+                x.start()
+            else:
+                df=self._predict(key,file,learning_curve=learning_curve)
+                if isinstance(df,DataFrame):
+                    participants[key].append(df)
+                logging.info(f"Prediction of  {key} finished")
+        for index, thread in enumerate(threads):
+                thread.join()
+        for spec in participants:
+            if len(participants[spec])>0:
+                df_participants=pd.concat(participants[spec])
+                self._save(df_participants,self.get_filename(),self.get_save_mode())

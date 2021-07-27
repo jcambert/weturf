@@ -1,43 +1,55 @@
-;date;reunion;course;specialite;nom;rapport;numPmu;state;resultat_place;resultat_rapport;gain_brut;gain_net
-3;23/07/2021;1;4;trot attele;GRAZZIA DU DAN;4.1;5.0;place;;;;
-16;23/07/2021;1;1;trot attele;TJACKO ZAZ;2.9;5.0;place;;;;
-26;23/07/2021;1;6;trot attele;FELINE DE JANVILLE;2.3;4.0;place;;;;
-29;23/07/2021;1;6;trot attele;FABULOUS GIRL;5.0;7.0;place;;;;
-52;23/07/2021;1;5;trot attele;HUB;4.7;16.0;place;;;;
-59;23/07/2021;1;3;trot attele;GAGNANT;4.3;7.0;place;;;;
-64;23/07/2021;1;3;trot attele;GITANO JACK;3.9;12.0;place;;;;
-73;23/07/2021;1;7;trot attele;IPSILON D'EMERAUDE;6.7;8.0;place;;;;
-90;23/07/2021;3;2;trot attele;INTRIGUE SOMOLLI;3.6;12.0;place;;;;
-98;23/07/2021;3;3;trot attele;ILMAT DES KECHES;2.8;6.0;place;;;;
-99;23/07/2021;3;3;trot attele;IRISH WIND;8.8;7.0;place;;;;
-101;23/07/2021;3;3;trot attele;ITAQUE DU VIVIER;6.0;9.0;place;;;;
-106;23/07/2021;3;3;trot attele;ILDO DES CHAMPS;3.3;14.0;place;;;;
-115;23/07/2021;3;6;trot attele;FLECHE ETOILE;5.6;9.0;place;;;;
-124;23/07/2021;3;5;trot attele;HARRY DU LYS;9.1;2.0;place;;;;
-133;23/07/2021;3;5;trot attele;HEROS NUEVO;30.0;11.0;place;;;;
-138;23/07/2021;3;7;trot attele;GRACE DU LUPIN;5.9;1.0;place;;;;
-144;23/07/2021;3;7;trot attele;FLORA DE LA VALLEE;2.3;7.0;place;;;;
-146;23/07/2021;3;4;trot attele;HISTORY FAMILY;2.8;2.0;place;;;;
-147;23/07/2021;3;4;trot attele;HERA SANTIGNY;2.8;3.0;place;;;;
-156;23/07/2021;3;4;trot attele;HEITIDA GEDE;58.0;12.0;place;;;;
-172;23/07/2021;5;4;trot attele;WINNETOU DIAMANT;6.0;2.0;place;;;;
-190;23/07/2021;5;1;trot attele;HEGOA DU BOULAY;5.0;12.0;place;;;;
-197;23/07/2021;5;2;trot attele;CATSOUS;17.0;5.0;place;;;;
-203;23/07/2021;5;2;trot attele;CASANOVA D'AMOUR;60.0;11.0;place;;;;
-204;23/07/2021;5;3;trot attele;LUUK SCHERMER;2.9;1.0;place;;;;
-205;23/07/2021;5;3;trot attele;KOSMOS RENKA;6.6;2.0;place;;;;
-206;23/07/2021;5;3;trot attele;KEN BULL;3.1;3.0;place;;;;
-210;23/07/2021;5;3;trot attele;JACK BALDWIN;5.3;7.0;place;;;;
-216;23/07/2021;6;1;trot attele;EL SANTO HAUFOR;5.1;5.0;place;;;;
-217;23/07/2021;6;1;trot attele;DA VINCI BOND;3.4;6.0;place;;;;
-220;23/07/2021;6;1;trot attele;DIABLO DE CAPONET;2.5;9.0;place;;;;
-231;23/07/2021;6;3;trot attele;FRONSAC;1.4;10.0;place;;;;
-232;23/07/2021;6;3;trot attele;FOREVER DU JOUAN;7.5;11.0;place;;;;
-248;23/07/2021;6;6;trot attele;IMBASI RAINBOW;35.0;2.0;place;;;;
-254;23/07/2021;6;6;trot attele;IPSWICH DE CAHOT;1.5;8.0;place;;;;
-259;23/07/2021;6;6;trot attele;IN NOMINE;12.0;13.0;place;;;;
-267;23/07/2021;6;4;trot attele;GREZ;6.6;7.0;place;;;;
-268;23/07/2021;6;4;trot attele;GIBALDI DE HOUELLE;2.2;8.0;place;;;;
-284;23/07/2021;6;8;trot attele;EL PASO ELDE;8.3;1.0;place;;;;
-290;23/07/2021;6;8;trot attele;ECLAIR DE CERIZE;5.2;8.0;place;;;;
-35;23/07/2021;3;1;trot monte;GEVREY D'AUTHISE;4.0;9.0;place;;;;
+date;reunion;course;specialite;nom;rapport;numPmu;state;resultat_place;resultat_rapport;gain_brut;gain_net
+2021-07-27;3;1;trot attele;DALTON NOA;2.5;1.0;place;0;0;0;0
+2021-07-27;3;1;trot attele;CATSOUS;9.6;3.0;place;0;0;0;0
+2021-07-27;3;1;trot attele;EMBLEME DE L'ITON;7.2;5.0;place;0;0;0;0
+2021-07-27;3;1;trot attele;COMPLICE;10.0;7.0;place;0;0;0;0
+2021-07-27;3;1;trot attele;EPEE D'HAUFOR;3.7;8.0;place;0;0;0;0
+2021-07-27;3;3;trot attele;ICARE DU LOISIR;4.7;1.0;place;0;0;0;0
+2021-07-27;3;4;trot attele;HAYASTAN DE ROSAN;13.0;1.0;place;0;0;0;0
+2021-07-27;3;4;trot attele;HERA WIND;2.1;2.0;place;0;0;0;0
+2021-07-27;3;4;trot attele;HALIZAROSA;6.4;3.0;place;0;0;0;0
+2021-07-27;3;6;trot attele;GLORY MESLOISE;4.9;2.0;place;0;0;0;0
+2021-07-27;3;6;trot attele;GAYA DE GESVRES;7.1;4.0;place;0;0;0;0
+2021-07-27;3;6;trot attele;GABY DES MOYEUX;7.0;5.0;place;0;0;0;0
+2021-07-27;3;6;trot attele;GERGOVIA THUYAS;8.1;6.0;place;0;0;0;0
+2021-07-27;3;6;trot attele;GENEVE VOIRONS;3.2;7.0;place;0;0;0;0
+2021-07-27;3;6;trot attele;FLEUR DU NORD;49.0;8.0;place;0;0;0;0
+2021-07-27;3;6;trot attele;GEMILIANA;10.0;12.0;place;0;0;0;0
+2021-07-27;3;5;trot attele;ETOILE DAIRPET;17.0;2.0;place;0;0;0;0
+2021-07-27;3;5;trot attele;FADOUNA D'OCCAGNES;12.0;7.0;place;0;0;0;0
+2021-07-27;3;5;trot attele;FILOU DE CHARDET;2.6;8.0;place;0;0;0;0
+2021-07-27;3;5;trot attele;FUEGO DU MORTIER;4.6;9.0;place;0;0;0;0
+2021-07-27;3;5;trot attele;EXTASE DU BOUFFEY;6.9;11.0;place;0;0;0;0
+2021-07-27;3;7;trot attele;FLAG DE MARIONS;6.4;1.0;place;0;0;0;0
+2021-07-27;3;7;trot attele;GALANT DE CELLAND;5.2;3.0;place;0;0;0;0
+2021-07-27;3;7;trot attele;GUIGNOL DE CHARDET;3.0;5.0;place;0;0;0;0
+2021-07-27;3;7;trot attele;GEORGES L'AVENTURE;7.7;6.0;place;0;0;0;0
+2021-07-27;3;7;trot attele;FRICHTI;12.0;10.0;place;0;0;0;0
+2021-07-27;5;1;trot attele;HALLEY DE MARS;9.3;1.0;place;0;0;0;0
+2021-07-27;5;1;trot attele;HAUTAIN;2.7;3.0;place;0;0;0;0
+2021-07-27;5;1;trot attele;HISTOIRE PIERJI;8.1;6.0;place;0;0;0;0
+2021-07-27;5;1;trot attele;HURRICANE STEED;7.7;7.0;place;0;0;0;0
+2021-07-27;5;1;trot attele;HIGHLANDER JAYF;13.0;10.0;place;0;0;0;0
+2021-07-27;5;2;trot attele;FAVORABLE;5.3;1.0;place;0;0;0;0
+2021-07-27;5;2;trot attele;EL SAMBA;6.5;4.0;place;0;0;0;0
+2021-07-27;5;2;trot attele;FALBALA D'ESCRIT;12.0;5.0;place;0;0;0;0
+2021-07-27;5;2;trot attele;FLEUR DE RAMBURES;9.7;7.0;place;0;0;0;0
+2021-07-27;5;2;trot attele;EASYMEDE;8.5;12.0;place;0;0;0;0
+2021-07-27;5;9;trot attele;DIVIN ANAXEL;13.0;3.0;place;0;0;0;0
+2021-07-27;5;9;trot attele;FULL IRON;2.4;5.0;place;0;0;0;0
+2021-07-27;5;9;trot attele;DOLLAR DE L'ITON;9.2;7.0;place;0;0;0;0
+2021-07-27;5;9;trot attele;CALL BOY DANOVER;6.3;11.0;place;0;0;0;0
+2021-07-27;5;4;trot attele;GOSPEL D'ARIANE;24.0;15.0;place;0;0;0;0
+2021-07-27;5;4;trot attele;GAMIN D'ALJY;2.4;16.0;place;0;0;0;0
+2021-07-27;5;7;trot attele;ENGALA DE LOU;7.8;3.0;place;0;0;0;0
+2021-07-27;5;7;trot attele;DOMINO DE LARRE;4.1;4.0;place;0;0;0;0
+2021-07-27;5;7;trot attele;EXCELEBRATION;17.0;13.0;place;0;0;0;0
+2021-07-27;5;5;trot attele;HUGOLINE DU BISTON;4.6;8.0;place;0;0;0;0
+2021-07-27;5;5;trot attele;HAITIAN FIGHT SONG;4.7;15.0;place;0;0;0;0
+2021-07-27;5;5;trot attele;HISTORY MAJYC;4.0;16.0;place;0;0;0;0
+2021-07-27;6;10;trot attele;VERY KRONOS;10.0;2.0;place;0;0;0;0
+2021-07-27;6;10;trot attele;NIGHT BRODDE;26.0;3.0;place;0;0;0;0
+2021-07-27;6;10;trot attele;UPSTATE FACE;26.0;4.0;place;0;0;0;0
+2021-07-27;6;10;trot attele;CALLE CROWN;8.8;5.0;place;0;0;0;0
+2021-07-27;6;10;trot attele;GARETH BOKO;8.8;6.0;place;0;0;0;0
+2021-07-27;6;10;trot attele;ALRAJAH ONE;7.6;7.0;place;0;0;0;0

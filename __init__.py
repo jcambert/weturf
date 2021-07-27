@@ -1,8 +1,9 @@
 import logging
+from predicter import Predicter
 import time
+import sys
 
-
-from scrapper import ResultatScrapper, Scrapper
+from scrapper import HistoryScrapper, ResultatScrapper, Scrapper, ToPredictScrapper
 
 if __name__=="__main__":
 
@@ -19,6 +20,24 @@ if __name__=="__main__":
     # s=Scrapper(use_proxy=True,USE_THREADING=True,to_check_results=True)
     # s.start(predict_filename="predicted")
 
-    resultat=ResultatScrapper(use_proxy=True,use_threading=True)
-    resultat.start("24072021")
+    # scrapper=ResultatScrapper(use_proxy=True,use_threading=True,test=True)
+    # scrapper=HistoryScrapper(use_proxy=True,use_threading=True,test=True)
+    
+    if sys.argv[1] in ["scrapper","all"]:
+        scrapper=ToPredictScrapper()
+        scrapper.start()
+
+    if sys.argv[1] in ["predicter","all"]:
+        predicter=Predicter(print_result=True)
+        predicter.start()
+
+    if sys.argv[1] == "history":
+        start=sys.argv[2]
+        end=sys.argv[3]
+        scrapper=HistoryScrapper()
+        scrapper.start(start=start,end=end)
+        
+    if sys.argv[1]=="l_curve":
+        predicter=Predicter(use_threading=False,test=True)
+        values=predicter.start(training_files= {'trot attele':'trot_attele'}, learning_curve=True)
     logging.info(f"it's took {(time.time() - start_time)} seconds\nBye...")

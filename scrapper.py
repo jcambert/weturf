@@ -31,6 +31,12 @@ def get_yesterday(fmt=False):
         return yesterday.strftime(fmt)
     return yesterday
 
+def get_today(fmt=False):
+    today = datetime.now()
+    if fmt:
+        return today.strftime(fmt)
+    return today
+
 def get_pmu_date(d):
     if isinstance(d,str):
         d=d.replace('/','')
@@ -307,9 +313,12 @@ class Scrapper():
 
 
 class AbstractScrapper():
-    def __init__(self,**kwargs):
-        self._use_proxy= kwargs['use_proxy'] if 'use_proxy' in kwargs else True
-        self._use_threading= kwargs['use_threading'] if 'use_threading' in kwargs else True
+    def __init__(self,use_proxy=True,use_threading=True,test=False,**kwargs):
+        # self._use_proxy= kwargs['use_proxy'] if 'use_proxy' in kwargs else True
+        # self._use_threading= kwargs['use_threading'] if 'use_threading' in kwargs else True
+        # self._test=kwargs['test'] if 'test' in kwargs else False
+        self._use_proxy,self._use_threading,self._test=use_proxy,use_threading,test
+        self._fname= kwargs['fname'] if 'fname' in kwargs else None
     def _origins(self):
         url = 'http://httpbin.org/ip'
         o_p=json.loads(self._request(url,use_proxy=True).text)['origin']
@@ -321,33 +330,47 @@ class AbstractScrapper():
         return  (requests.get(url, proxies=PROXIES) if __use_proxy else  requests.get(url) )
     
     def _save(self,df,filename,mode='a'):
-        writeHeader=not path.exists(filename) or mode=='w'
-        df.to_csv(filename,sep=";",na_rep='',mode=mode,index=False,header=writeHeader)
-    
+        logging.info(f"Saving to {filename}")
+        if not self._test:
+            writeHeader=not path.exists(filename) or mode=='w'
+            df.to_csv(filename,sep=";",na_rep='',mode=mode,index=False,header=writeHeader)
+        else:
+            logging.info("Mode Test=> No saving file action")
+        logging.info(f"{filename} saved")
     def _check(self):
         if self._use_proxy:
             o=self._origins()
             if o[0]==o[1]:
                 raise AssertionError(f"When using proxy {o[0]} must be different than {o[1]} \ensure you are set proxy to Internet Options")
     def _scrap(self,day):
-        raise NotImplementedError(f"You cant run {__name__}")
+        raise NotImplementedError(f"You cant run {self.__class__.__name__}")
+    def get_default_start_date(self):
+        return get_yesterday()
+    def get_save_mode(self):
+        return 'a'
+    def get_filename(self):
+        return self._fname if isinstance(self._fname,str) else self._filename
     def start(self,start=None,**kwargs):
+        if(self.__class__.__name__ == type(AbstractScrapper).__name__):
+            raise NotImplementedError(f"You cant run {self.__class__.__name__}")
         self._check()
         if not start:
-            start=get_yesterday()
+            start=self.get_default_start_date()
         start=get_pmu_date(start)
         current=get_date_from_pmu( start)
         step=int(kwargs['step']) if 'step' in kwargs else 1
         if 'count' in kwargs:
             count = int(kwargs['count'])
         else:
-            if start==get_pmu_date(get_yesterday()):
+            if start==get_pmu_date(get_yesterday()) or start==get_pmu_date(get_today()):
                 kwargs['count']=0
         end=get_date_from_pmu( kwargs['end']) if 'end' in kwargs  else ( current+timedelta( int(kwargs['count'])+1) if 'count' in kwargs else get_date_from_pmu(yesterday))
         sleep=int(kwargs['sleep']) if 'sleep' in kwargs else 500
 
+        logging.info(f"Start scrapping {self.__class__.__name__} from {get_date_from_pmu( start)} to {end} exclude")
         while current<end:
             try:
+                logging.info(f"Start day {current}")
                 self._scrap(get_pmu_date(current ))
                 time.sleep(sleep/1000)
                 current=current+ timedelta(step)
@@ -357,13 +380,15 @@ class AbstractScrapper():
                 current=current+ timedelta(step)
         return (start,current,step)
 
-    def _get_reunions(self,date,as_json=False):
+    def _get_reunions(self,date,**kwargs):
+
         logging.info(f"Get Reunion:{prg_url%date}")
         
         try:
             resp=self._request(prg_url % date)
             if resp.status_code!=200:
                 return False
+            as_json=kwargs['as_json'] if 'as_json' in kwargs else False
             if as_json:
                 return resp.json()
             df=pd.DataFrame(resp.json())
@@ -371,6 +396,16 @@ class AbstractScrapper():
         except Exception as ex:
             logging.warning(ex)
             return False
+
+    def _get_participants(self,reunion,course,date,**kwargs):
+    #     print(ptcp_url % (date,reunion,course))
+        logging.info(f"Get Participants {ptcp_url % (date,reunion,course)}")
+        resp=self._request(ptcp_url % (date,reunion,course))
+        as_json=kwargs['as_json'] if 'as_json' in kwargs else False
+        if  as_json:
+            return resp
+        df=pd.DataFrame(resp.json()['participants'])
+        return df
 
     def _get_resultats(self,date,reunion,course,**kwargs):
         logging.info(f"Get Resultat {resultat_url % (date,reunion,course)}")
@@ -382,15 +417,15 @@ class AbstractScrapper():
         
         return df
 class ResultatScrapper(AbstractScrapper):
-    def __init__(self,**kwargs):
-        super().__init__(**kwargs)
-        self.__filename="resultats_%s.csv"
-    def _scrap(self,day,save_mode='a'):
+    def __init__(self,use_proxy=True,use_threading=True,test=False,**kwargs):
+        super().__init__(use_proxy,use_threading,test,**kwargs)
+        self._filename="resultats_%s.csv"
+    
+    def _scrap(self,day):
         df_reunions=self._get_reunions(day,as_json=True)
         if isinstance(df_reunions,bool) and not df_reunions:
             return
         list_reunions= df_reunions['programme']['reunions']
-        programmes=[]
         resultats={'TROT_MONTE':[],'TROT_ATTELE':[],'PLAT':[],'OBSTACLE':[]}
         for reunion in list_reunions:
             threads = list()
@@ -416,7 +451,7 @@ class ResultatScrapper(AbstractScrapper):
         for spec in resultats:
             if len(resultats[spec])>0:
                 df_resultats=pd.concat(resultats[spec])
-                self._save(df_resultats,self.__filename % spec.lower(),save_mode)
+                self._save(df_resultats,self.get_filename() % spec.lower(),self.get_save_mode())
  
     def __scrap_resulats(self,day,reunion,course,result=False):
         lines=[]
@@ -443,10 +478,118 @@ class ResultatScrapper(AbstractScrapper):
         except Exception as ex:
             logging.error(ex)
             return False
-class ToPredictScrapper(AbstractScrapper):
-    def __init__(self,**kwargs):
-        super().__init__(**kwargs)
-    
+
 class HistoryScrapper(AbstractScrapper):
-    def __init__(self,**kwargs):
-        super().__init__(**kwargs)
+    def __init__(self,use_proxy=True,use_threading=True,test=False,**kwargs):
+        super().__init__(use_proxy,use_threading,test,**kwargs)
+        self._filename="participants_%s.csv"
+    def _scrap(self,day):
+        day=get_pmu_date(day)
+        logging.info(f"Start scraping {get_date_from_pmu( day)}")
+        participants={'TROT_MONTE':[],'TROT_ATTELE':[],'PLAT':[],'OBSTACLE':[]}
+        df_reunions=self._get_reunions(day)
+        if isinstance(df_reunions,bool) and not df_reunions:
+            return
+        df_reunions=df_reunions['programme']['reunions']
+        for r_index,reunion in enumerate(df_reunions):
+            sub=pd.DataFrame.from_dict(reunion,orient="index")[0]
+            subdf=pd.json_normalize(sub['courses'],max_level=1)
+
+            threads = list()
+            for c_index,course in subdf.iterrows():
+                subdf_ptcp=None
+                specialite=course['specialite']
+
+                if self._use_threading:
+                    logging.info(f"START REUNION {course['numReunion']}/{course['numExterne']}")
+                    logging.debug("Main    : create and start thread %d.", c_index)
+                    x = threading.Thread(target=self.__scrap_participants, args=(day,course,sub,participants[specialite]))
+                    threads.append(x)
+                    x.start()
+                else:
+
+                    subdf_ptcp=self.__scrap_participants(day,course,sub)
+                    if subdf_ptcp:
+                        participants[specialite].append(subdf_ptcp)
+                    logging.info(f"END REUNION {course['numReunion']}/{course['numExterne']}")
+                
+            for index, thread in enumerate(threads):
+                logging.debug("Main    : before joining thread %d.", index)
+                thread.join()
+                logging.debug("Main    : thread %d done", index)
+
+        for spec in participants:
+            if len(participants[spec])>0:
+                df_participants=pd.concat(participants[spec])
+                self._save(df_participants,self.get_filename() % spec.lower(),self.get_save_mode())
+
+        logging.info(f"End scrapping day:{day}")
+    def __scrap_participants(self,day,course,sub,result=False):
+        try:
+            subdf_ptcp=self._get_participants(course['numReunion'],course['numExterne'],day)
+            if 'dernierRapportDirect' in subdf_ptcp:
+                subdf_ptcp = subdf_ptcp[subdf_ptcp['dernierRapportDirect'].notna()]
+            subdf_ptcp['date']=get_date_from_pmu(day)
+            subdf_ptcp['reunion']=course['numReunion']
+            subdf_ptcp['course']=course['numExterne']
+            subdf_ptcp['hippo_code']=sub['hippodrome']['code']
+            subdf_ptcp['hippo_nom']=sub['hippodrome']['libelleCourt']
+            subdf_ptcp['distance']= course['distance']
+            subdf_ptcp['distanceUnit']= course['distanceUnit']
+            
+            # TODO CHECK
+            # if 'gainsParticipant' in subdf_ptcp and not 'gainsCarriere' in subdf['gainsParticipant']:
+            #     subdf_ptcp=subdf_ptcp.assign(gain_carriere=[0])
+            subdf_ptcp=subdf_ptcp.assign(gain_carriere=[value['gainsCarriere'] for value in subdf_ptcp['gainsParticipant']])
+            subdf_ptcp=subdf_ptcp.assign(gain_victoires=[value['gainsVictoires'] for value in subdf_ptcp['gainsParticipant']])
+            subdf_ptcp=subdf_ptcp.assign(gain_places=[value['gainsPlace'] for value in subdf_ptcp['gainsParticipant']])
+            subdf_ptcp=subdf_ptcp.assign(gain_annee_en_cours=[value['gainsAnneeEnCours'] for value in subdf_ptcp['gainsParticipant']])
+            if 'gainsParticipant' in subdf_ptcp:
+                subdf_ptcp=subdf_ptcp.assign(gain_annee_precedente=[value['gainsAnneePrecedente'] for value in subdf_ptcp['gainsParticipant']])
+            else:
+                subdf_ptcp['gainsParticipant']=0
+
+            if 'dernierRapportDirect' in subdf_ptcp:
+                subdf_ptcp=subdf_ptcp.assign(rapport=[value['rapport'] for value in subdf_ptcp['dernierRapportDirect']])
+            else:
+                subdf_ptcp['rapport']=0
+
+            if not 'placeCorde' in subdf_ptcp:
+                subdf_ptcp['placeCorde']=0
+
+            if not 'handicapValeur' in subdf_ptcp:
+                subdf_ptcp['handicapValeur']=0
+
+            if not 'handicapPoids' in subdf_ptcp:
+                subdf_ptcp['handicapPoids']=0
+
+            if not 'deferre' in subdf_ptcp:
+                subdf_ptcp['deferre']=0
+
+            if not 'handicapDistance'   in subdf_ptcp:
+                subdf_ptcp['handicapDistance']=0    
+
+            col_ex=subdf_ptcp.columns.tolist()
+            col_to=['date','reunion','course','hippo_code','hippo_nom', 'nom','numPmu','rapport','age','sexe','race','statut','oeilleres','deferre','indicateurInedit','musique','nombreCourses','nombreVictoires','nombrePlaces','nombrePlacesSecond','nombrePlacesTroisieme','ordreArrivee','distance','handicapDistance','gain_carriere'	,'gain_victoires'	,'gain_places'	,'gain_annee_en_cours',	'gain_annee_precedente','placeCorde','handicapValeur','handicapPoids']
+            for col in filter(lambda x: x not in col_ex ,col_to) :
+                logging.warning(f"{col} does not exist in dataframe")
+            
+            if not 'ordreArrivee' in subdf_ptcp:
+                subdf_ptcp['ordreArrivee']=0
+            subdf_ptcp=subdf_ptcp[col_to]
+            if isinstance(result,list):
+                result.append(subdf_ptcp)
+                logging.info(f"END REUNION {course['numReunion']}/{course['numExterne']}")
+            else:
+                return subdf_ptcp
+        except Exception as ex:
+            logging.error(ex)
+            return False
+class ToPredictScrapper(HistoryScrapper):
+    def __init__(self,use_proxy=True,use_threading=True,test=False,**kwargs):
+        super().__init__(use_proxy,use_threading,test,**kwargs)
+        self._filename="topredict_%s.csv"
+    def get_default_start_date(self):
+        return get_today()
+    def get_save_mode(self):
+        return 'w'
