@@ -1,3 +1,4 @@
+#@see https://scikit-learn.org/stable/auto_examples/applications/plot_model_complexity_influence.html?highlight=classifier
 from operator import indexOf
 from os import path
 import threading
@@ -244,17 +245,40 @@ if __name__=='__main__':
         output_df.to_csv(f"predicted.csv",header=True,sep=";",mode='w')
         output_df.to_html(f"predicted.html")
         # pd.DataFrame.from_dict(output).to_csv(f"predicted.csv",header=True,sep=";",mode='a')
+# class Benchmarker():
+#     configurations = [
+#         {'estimator': SGDClassifier,
+#         'tuned_params': {'penalty': 'elasticnet', 'alpha': 0.001, 'loss':
+#                         'modified_huber', 'fit_intercept': True, 'tol': 1e-3},
+#         'changing_param': {'l1_ratio', [0.25, 0.5, 0.75, 0.9]},
+#         'complexity_label': 'non_zero coefficients',
+#         'complexity_computer': _count_nonzero_coefficients,
+#         'prediction_performance_computer': hamming_loss,
+#         'prediction_performance_label': 'Hamming Loss (Misclassification Ratio)',
+#         'postfit_hook': lambda x: x.sparsify(),
+#         'data': classification_data,
+#         'n_samples': 30}]
+#     def start(self,config):
+#         for c
 
 class Predicter():
     def __init__(self,use_threading=True,test=False,**kwargs) -> None:
+        format = "%(asctime)s: %(message)s"
+        logging.basicConfig(format=format, level=logging.INFO,datefmt="%H:%M:%S")
+
         self._use_threading,self._test=use_threading,test
         self._fname= kwargs['fname'] if 'fname' in kwargs else None
         self._print_confusion_matrix=kwargs['print_confusion_matrix'] if 'print_confusion_matrix' in kwargs else False
         self._print_training_score=kwargs['print_training_score'] if 'print_training_score' in kwargs else False
         self._print_result=kwargs['print_result'] if 'print_result' in kwargs else False
         self._filename="predicted.csv"
+        self._train_size=int(kwargs['train_size'])  if 'train_size' in kwargs else None
+        self._test_size=float(kwargs['test_size']) if 'test_size' in kwargs else None
+
+
     def _load_file(self,filename,is_predict=False):
-        df=pd.read_csv(filename,sep=";",header=0,usecols=HEADER_COLUMNS+NUMERICAL_FEATURES+CATEGORICAL_FEATURES+CALCULATED_FEATURES+['ordreArrivee'],dtype={'numPmu':np.number},low_memory=False,converters={'musique':calculate_music,'sexe':sexe_converter})
+        
+        df=pd.read_csv(filename,sep=";",header=0,usecols=HEADER_COLUMNS+NUMERICAL_FEATURES+CATEGORICAL_FEATURES+CALCULATED_FEATURES+['ordreArrivee'],dtype={'numPmu':np.number},low_memory=False,converters={'musique':calculate_music,'sexe':sexe_converter},nrows=self._train_size )
 
         if not is_predict:
             df['ordreArrivee'].fillna(0,inplace=True)
@@ -277,21 +301,50 @@ class Predicter():
         if not train_sizes:
             train_sizes=np.linspace(0.1,1.0,10)
         N,train_score,val_score=learning_curve(model,features,targets,train_sizes=train_sizes,cv=cv)
-        return N,train_score,val_score
+        return (N,train_score,val_score)
 
-    def gridSearchCV(self,model,param_grid=None,cv=None):
+    def benchmark(self,file="trot_attele"):
+        features,targets=self.load_datas(file)
+        configurations=[
+            {
+                "estimator":SGDClassifier,
+                "param_grid":{'sgdclassifier__loss':['hinge', 'log', 'modified_huber', 'squared_hinge', 'perceptron', 'squared_loss', 'huber', 'epsilon_insensitive','squared_epsilon_insensitive'],
+                                'sgdclassifier__max_iter':np.arange(500,1000,2),
+                                'sgdclassifier__shuffle':[True,False],
+                                'sgdclassifier__learning_rate':['constant','optimal','invscaling','adaptive'],
+                                'sgdclassifier__eta0':[0.05],
+                                'sgdclassifier__l1_ratio':[0.25, 0.5, 0.75, 0.9],
+                                'sgdclassifier__penalty':['l2', 'l1', 'elasticnet']
+                            }
+            }
+        ]
+        logging.info("*"*70)
+        logging.info(f"STARTING BENCHMARKING")
+        for config in configurations:
+            logging.info(f"Benchmarking {config['estimator'].__name__}")
+            model,features_train, features_test, targets_train, targets_test =self.create_pipeline(config["estimator"], features,targets,shuffle=True)
+            best,params,score=self.gridSearchCV(model,features_train,targets_train,param_grid=config["param_grid"])
+            logging.info(f"{config['estimator']} \n\t-> Params:{params}\n\t->Score:{score}")
+        logging.info(f"BENCHMARKING ENDED")
+        logging.info(f"/"*70)
+    def gridSearchCV(self,model,features,targets,param_grid=None,cv=None):
+
         param_grid=param_grid or{'sgdclassifier__loss':['hinge', 'log', 'modified_huber', 'squared_hinge', 'perceptron', 'squared_loss', 'huber', 'epsilon_insensitive','squared_epsilon_insensitive'],
-                'sgdclassifier__max_iter':np.arange(10,1000,2),
+                
                 'sgdclassifier__shuffle':[True,False],
-                'sgdclassifier__n_jobs':[1,2,3,4],
                 'sgdclassifier__learning_rate':['constant','optimal','invscaling','adaptive'],
                 'sgdclassifier__eta0':[0.05],
-                'sgdclassifier__max_iter':[5000]}
+                'sgdclassifier__l1_ratio':[0.25, 0.5, 0.75, 0.9],
+                'sgdclassifier__penalty':['l2', 'l1', 'elasticnet']}
         cv=cv or StratifiedKFold(4)
         grid=GridSearchCV(model,param_grid,cv=cv)
-        grid.fit(features_train,targets_train)
+        logging.info("Grid Search starting")
+        grid.fit(features,targets)
         model_=grid.best_estimator_
-        return model_
+        params_=grid.best_params_
+        score_=grid.best_score_
+        logging.info("Grid Search ended")
+        return model_,params_,score_
 
     def _get_confusion_matrix(self,model,features_test,targets_test):
         return confusion_matrix(targets_test,model.predict(features_test))
@@ -299,19 +352,41 @@ class Predicter():
     def _get_score(self,model,features_test,targets_test):
         return model.score(features_test, targets_test)
 
-    def _train(self,features,targets,test_size=0.3,random_state=5,shuffle=False,classifier=None,name=None):
-        logging.info(f"Starting training {name}")
-        classifier=classifier or SGDClassifier(random_state=random_state,loss='squared_hinge',shuffle=True,learning_rate='optimal')
+    # def _train(self,features,targets,test_size=0.3,random_state=5,shuffle=False,classifier=None,name=None):
+    #     logging.info(f"Starting training {name}")
+
+    #     test_size=self._test_size or test_size
+        
+    #     classifier=classifier or SGDClassifier(random_state=random_state,loss='squared_hinge',shuffle=True,learning_rate='optimal')
+
+    #     features_train, features_test, targets_train, targets_test = train_test_split(features, targets, test_size=test_size, random_state=random_state,shuffle=shuffle)
+    #     numerical_pipeline=make_pipeline(SimpleImputer(fill_value=0), RobustScaler())
+    #     categorical_pipeline=(make_pipeline(OneHotEncoder(handle_unknown = 'ignore')))
+    #     preprocessor=make_column_transformer(
+    #         (numerical_pipeline,NUMERICAL_FEATURES),
+    #         (categorical_pipeline,CATEGORICAL_FEATURES))
+    #     model_=make_pipeline(preprocessor,PolynomialFeatures(),VarianceThreshold(0.1),classifier)
+    #     model_.fit(features_train,targets_train)
+    #     logging.info(f"{name} is trained")
+    #     logging.info(f"Score: {model_.score(features_test, targets_test)}")
+    #     return model_,features_train, features_test, targets_train, targets_test
+
+    def load_datas(self,file):
+        features,targets=self._load_file(f"participants_{file}.csv")
+        return features,targets
+
+    def create_pipeline(self,classifier,features,targets,test_size=0.3,random_state=5,shuffle=False, **classifier_params):
+        test_size=self._test_size or test_size
+        _classifier=classifier(**classifier_params)
         features_train, features_test, targets_train, targets_test = train_test_split(features, targets, test_size=test_size, random_state=random_state,shuffle=shuffle)
         numerical_pipeline=make_pipeline(SimpleImputer(fill_value=0), RobustScaler())
         categorical_pipeline=(make_pipeline(OneHotEncoder(handle_unknown = 'ignore')))
         preprocessor=make_column_transformer(
             (numerical_pipeline,NUMERICAL_FEATURES),
             (categorical_pipeline,CATEGORICAL_FEATURES))
-        model_=make_pipeline(preprocessor,PolynomialFeatures(),VarianceThreshold(0.1),classifier)
-        model_.fit(features_train,targets_train)
-        logging.info(f"{name} is trained")
-        return model_,features_train, features_test, targets_train, targets_test
+        pipeline=make_pipeline(preprocessor,PolynomialFeatures(),VarianceThreshold(0.1),_classifier)
+        return pipeline,features_train,features_test,targets_train,targets_test
+    
 
     def _predict(self,key,file,learning_curve=False, result=False):
         logging.info(f"Start prediction for {key}")
@@ -319,13 +394,14 @@ class Predicter():
             output_columns=['date','reunion','course','specialite','nom','rapport','numPmu','state','resultat_place','resultat_rapport','gain_brut','gain_net']
             output_df=pd.DataFrame(columns=output_columns)
 
-            features,targets=self._load_file(f"participants_{file}.csv")
+            features,targets=self.load_datas(f"participants_{file}.csv")
             to_predict,courses,chevaux=self._load_file(f"topredict_{file}.csv",is_predict=True)
-            model,features_train, features_test, targets_train, targets_test =self._train(features,targets,shuffle=True,name=key)
+            model,features_train, features_test, targets_train, targets_test =self.create_pipeline(SGDClassifier, features,targets,shuffle=True)
+            model.fit(features_train,targets_train)
 
             if learning_curve:
                 output_df= self.leaning_curve(model,features= features_train,targets=targets_train,)
-                
+            
             else:
                 for course in courses.iterrows():
                     x = np.asarray(course[1]).reshape(1,len(course[1]))
@@ -352,7 +428,7 @@ class Predicter():
                             logging.info(f"R{r}/C{c} -> {t.nom}[{t.rapport}] {t.numPmu} placé" )
                     output_df=output_df.append(res.copy())
 
-            if isinstance(result,list):
+            if isinstance(result,list) or isinstance(result,tuple):
                 result.append(output_df)
                 logging.info(f"Prediction of  {key} finished")
             else:
@@ -385,11 +461,13 @@ class Predicter():
                 x.start()
             else:
                 df=self._predict(key,file,learning_curve=learning_curve)
-                if isinstance(df,DataFrame):
+                if isinstance(df,DataFrame) or isinstance(df,tuple):
                     participants[key].append(df)
                 logging.info(f"Prediction of  {key} finished")
         for index, thread in enumerate(threads):
                 thread.join()
+        if learning_curve:
+            return participants
         for spec in participants:
             if len(participants[spec])>0:
                 df_participants=pd.concat(participants[spec])

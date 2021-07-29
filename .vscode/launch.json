@@ -46,7 +46,11 @@
             "type": "python",
             "request": "launch",
             "program": "__init__.py",
-            "args": ["history","26072021","31072021"],
+            "args": [
+                "history",
+                "26072021",
+                "31072021"
+            ],
             "console": "integratedTerminal"
         },
         {
@@ -54,7 +58,17 @@
             "type": "python",
             "request": "launch",
             "program": "__init__.py",
-            "args": ["l_curve"],
+            "args": [
+                "l_curve"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Benchmark",
+            "type": "python",
+            "request": "launch",
+            "program": "__init__.py",
+            "args": ["benchmark"],
             "console": "integratedTerminal"
         }
     ]

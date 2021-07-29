@@ -1,2 +1,7 @@
 **/old
 **/.ipynb_checkpoints
+**/*.csv
+**/*.html
+.ipnb*
+__pycache__/**.pyc
+*.csv
