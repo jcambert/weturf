@@ -304,40 +304,43 @@ class Predicter():
         return (N,train_score,val_score)
 
     def benchmark(self,file="trot_attele"):
-        features,targets=self.load_datas(file)
-        configurations=[
-            {
-                "estimator":SGDClassifier,
-                "param_grid":{'sgdclassifier__loss':['hinge', 'log', 'modified_huber', 'squared_hinge', 'perceptron', 'squared_loss', 'huber', 'epsilon_insensitive','squared_epsilon_insensitive'],
-                                'sgdclassifier__max_iter':np.arange(500,1000,2),
-                                'sgdclassifier__shuffle':[True,False],
-                                'sgdclassifier__learning_rate':['constant','optimal','invscaling','adaptive'],
-                                'sgdclassifier__eta0':[0.05],
-                                'sgdclassifier__l1_ratio':[0.25, 0.5, 0.75, 0.9],
-                                'sgdclassifier__penalty':['l2', 'l1', 'elasticnet']
-                            }
-            }
-        ]
-        logging.info("*"*70)
-        logging.info(f"STARTING BENCHMARKING")
-        for config in configurations:
-            logging.info(f"Benchmarking {config['estimator'].__name__}")
-            model,features_train, features_test, targets_train, targets_test =self.create_pipeline(config["estimator"], features,targets,shuffle=True)
-            best,params,score=self.gridSearchCV(model,features_train,targets_train,param_grid=config["param_grid"])
-            logging.info(f"{config['estimator']} \n\t-> Params:{params}\n\t->Score:{score}")
-        logging.info(f"BENCHMARKING ENDED")
-        logging.info(f"/"*70)
+        try:
+            features,targets=self.load_datas(file)
+            configurations=[
+                {
+                    "estimator":SGDClassifier,
+                    "param_grid":{'sgdclassifier__loss':['hinge', 'log', 'modified_huber', 'squared_hinge', 'perceptron', 'squared_loss', 'huber', 'epsilon_insensitive','squared_epsilon_insensitive'],
+                                    'sgdclassifier__shuffle':[True,False],
+                                    'sgdclassifier__eta0':[0.5],
+                                    'sgdclassifier__learning_rate':['constant','optimal','invscaling','adaptive'],
+                                    'sgdclassifier__l1_ratio':[0.25, 0.5, 0.75, 0.9],
+                                    'sgdclassifier__penalty':['l2', 'l1', 'elasticnet'],
+                                    'sgdclassifier__max_iter':[5000]
+                                }
+                }
+            ]
+            logging.info("*"*70)
+            logging.info(f"STARTING BENCHMARKING")
+            for config in configurations:
+                logging.info(f"Benchmarking {config['estimator'].__name__}")
+                model,features_train, features_test, targets_train, targets_test =self.create_pipeline(config["estimator"], features,targets,shuffle=True)
+                best,params,score=self.gridSearchCV(model,features_train,targets_train,param_grid=config["param_grid"])
+                logging.info(f"{config['estimator']} \n\t-> Params:{params}\n\t->Score:{score}")
+            logging.info(f"BENCHMARKING ENDED")
+            logging.info(f"/"*70)
+        except FileNotFoundError as ex:
+            logging.warning(ex)
     def gridSearchCV(self,model,features,targets,param_grid=None,cv=None):
 
         param_grid=param_grid or{'sgdclassifier__loss':['hinge', 'log', 'modified_huber', 'squared_hinge', 'perceptron', 'squared_loss', 'huber', 'epsilon_insensitive','squared_epsilon_insensitive'],
                 
                 'sgdclassifier__shuffle':[True,False],
                 'sgdclassifier__learning_rate':['constant','optimal','invscaling','adaptive'],
-                'sgdclassifier__eta0':[0.05],
+                'sgdclassifier__eta0':[1],
                 'sgdclassifier__l1_ratio':[0.25, 0.5, 0.75, 0.9],
                 'sgdclassifier__penalty':['l2', 'l1', 'elasticnet']}
         cv=cv or StratifiedKFold(4)
-        grid=GridSearchCV(model,param_grid,cv=cv)
+        grid=GridSearchCV(model,param_grid,cv=cv,verbose=True)
         logging.info("Grid Search starting")
         grid.fit(features,targets)
         model_=grid.best_estimator_
